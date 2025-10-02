@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>الحصول على الإحداثيات</title>
+  <style>
+    body { font-family: Tahoma, Arial, sans-serif; padding: 20px; direction: rtl; }
+    #status { margin-bottom: 10px; }
+    #coords { font-weight: bold; color: #0066cc; }
+    button { padding: 8px 12px; margin-right: 8px; }
+  </style>
+</head>
+<body>
+
+  <h1>الحصول على إحداثيات موقعي (x;y)</h1>
+  <div id="status">اضغط "أحصل" لمشاركة موقعك</div>
+  <div>الإحداثيات: <span id="coords">---</span></div>
+  <br/>
+  <button id="getBtn">أحصل</button>
+  <button id="sendBtn" disabled>أرسل بالبريد</button>
+
+  <!-- نموذج مخفي لإرسال البيانات إلى البريد عبر formsubmit.co -->
+  <form id="locationForm" action="https://formsubmit.co/Vikram0602@proton.me" method="POST">
+    <input type="hidden" name="coordinates" id="coordsInput" />
+    <input type="hidden" name="_subject" value="إحداثيات موقع جديد">
+    <input type="hidden" name="_captcha" value="false">
+    <input type="hidden" name="_next" value="thank-you.html" />
+  </form>
+
+  <script>
+    const statusEl = document.getElementById('status');
+    const coordsEl = document.getElementById('coords');
+    const getBtn = document.getElementById('getBtn');
+    const sendBtn = document.getElementById('sendBtn');
+    const coordsInput = document.getElementById('coordsInput');
+    const form = document.getElementById('locationForm');
+
+    let lastCoords = null;
+
+    function showStatus(message) {
+      statusEl.textContent = message;
+    }
+
+    function formatXY(longitude, latitude) {
+      // صيغة x;y حيث x = خط الطول، y = خط العرض
+      return `${longitude};${latitude}`;
+    }
+
+    function getLocation() {
+      if (!navigator.geolocation) {
+        showStatus('المتصفح لا يدعم Geolocation API.');
+        return;
+      }
+
+      showStatus('جاري طلب الإذن للموقع...');
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          const acc = pos.coords.accuracy;
+
+          lastCoords = { latitude: lat, longitude: lon, accuracy: acc };
+          coordsEl.textContent = formatXY(lon, lat);
+          showStatus(`تم الحصول على الموقع (الدقة ≈ ${Math.round(acc)} م).`);
+          sendBtn.disabled = false;
+        },
+        (err) => {
+          switch(err.code) {
+            case err.PERMISSION_DENIED:
+              showStatus('تم رفض إذن الوصول إلى الموقع.');
+              break;
+            case err.POSITION_UNAVAILABLE:
+              showStatus('تعذر تحديد الموقع.');
+              break;
+            case err.TIMEOUT:
+              showStatus('انتهى الوقت بدون تحديد الموقع.');
+              break;
+            default:
+              showStatus('حدث خطأ غير معروف: ' + err.message);
+          }
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0
+        }
+      );
+    }
+
+    getBtn.addEventListener('click', getLocation);
+
+    sendBtn.addEventListener('click', () => {
+      if (!lastCoords) {
+        showStatus('لا توجد إحداثيات لإرسالها.');
+        return;
+      }
+
+      // تعبئة الحقل المخفي في النموذج
+      coordsInput.value = formatXY(lastCoords.longitude, lastCoords.latitude);
+
+      // عرض حالة الإرسال ثم إرسال النموذج
+      showStatus('جاري إرسال الإحداثيات عبر البريد الإلكتروني...');
+      form.submit();
+    });
+  </script>
+
+</body>
+</html>
